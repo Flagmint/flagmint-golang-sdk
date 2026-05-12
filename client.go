@@ -131,8 +131,4 @@ func (c *FlagClient) handleFlagsUpdated(raw map[string]any) {
 			c.cache.Set(ctx.Key, flags)
 		}
 	}
-
-	if c.cfg.onError == nil {
-		return
-	}
 }
