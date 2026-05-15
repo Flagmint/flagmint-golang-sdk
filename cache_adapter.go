@@ -22,9 +22,11 @@ type CacheAdapter interface {
 	SaveFlags(apiKey string, flags FeatureFlags) error
 
 	// LoadContext returns the cached evaluation context, or nil if none exists.
+	// Context entries have no TTL — they persist until overwritten.
 	LoadContext(apiKey string) (*EvaluationContext, error)
 
-	// SaveContext persists the evaluation context.
+	// SaveContext persists the evaluation context. Unlike flags, the context
+	// has no TTL and remains valid until explicitly overwritten.
 	SaveContext(apiKey string, ctx *EvaluationContext) error
 }
 

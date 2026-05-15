@@ -34,7 +34,7 @@ func NewMemoryCache(ttl time.Duration) *MemoryCache {
 }
 
 // LoadFlags returns the cached flags for apiKey, or nil if the entry is absent
-// or has expired. Context entries have no TTL.
+// or has expired.
 func (m *MemoryCache) LoadFlags(apiKey string) (*flagmint.FeatureFlags, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
