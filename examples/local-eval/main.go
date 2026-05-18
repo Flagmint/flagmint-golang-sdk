@@ -10,11 +10,18 @@ import (
 )
 
 func main() {
+	// Create a client with local evaluation enabled (no transport connection
+	// needed when using manually supplied flag configs).
 	client, err := flagmint.NewClient("demo-api-key",
 		flagmint.WithContext(flagmint.EvaluationContext{
 			Kind: "user",
 			Key:  "user-456",
+			Attributes: map[string]any{
+				"plan":    "pro",
+				"country": "DE",
+			},
 		}),
+		flagmint.WithLocalEvaluation(),
 		flagmint.WithDeferInit(),
 	)
 	if err != nil {
@@ -26,22 +33,66 @@ func main() {
 		}
 	}()
 
-	// Use the local evaluator directly (e.g., when offline or for testing).
-	evaluator := evaluate.NewEvaluator()
-	evaluator.SetRules(map[string]any{
-		"dark-mode":       true,
-		"max-upload-mb":   float64(50),
-		"welcome-message": "Hello, world!",
+	// Build flag configurations (in production these come from the server via
+	// the /evaluator/config endpoint).
+	darkMode := &evaluate.FlagConfig{
+		Key:          "dark-mode",
+		Type:         evaluate.FlagTypeBoolean,
+		IsActive:     true,
+		DefaultValue: false,
+		Variations: []evaluate.Variation{
+			{ID: "v-false", Value: false},
+			{ID: "v-true", Value: true},
+		},
+		TargetingRules: []evaluate.TargetingRule{
+			{
+				ID:         "rule-pro",
+				Kind:       "custom",
+				OrderIndex: 1,
+				LogicalOp:  evaluate.LogicalAND,
+				Conditions: []evaluate.Condition{
+					{
+						Attribute: "plan",
+						Operator:  evaluate.OpEquals,
+						Value:     "pro",
+					},
+				},
+				VariationID: strPtr("v-true"),
+			},
+		},
+	}
+	darkMode.HydrateVariations()
+
+	uploadLimit := &evaluate.FlagConfig{
+		Key:          "max-upload-mb",
+		Type:         evaluate.FlagTypeNumber,
+		IsActive:     true,
+		DefaultValue: float64(10),
+		Variations: []evaluate.Variation{
+			{ID: "v-50", Value: float64(50)},
+		},
+		TargetingRules: []evaluate.TargetingRule{
+			{
+				ID:          "rule-all",
+				Kind:        "custom",
+				OrderIndex:  1,
+				LogicalOp:   evaluate.LogicalAND,
+				Conditions:  []evaluate.Condition{},
+				VariationID: strPtr("v-50"),
+			},
+		},
+	}
+	uploadLimit.HydrateVariations()
+
+	client.SetFlagConfigs(map[string]*evaluate.FlagConfig{
+		"dark-mode":     darkMode,
+		"max-upload-mb": uploadLimit,
 	})
 
-	ctx := flagmint.EvaluationContext{Kind: "user", Key: "user-456"}
-	attrs := ctx.Flatten()
-
-	for _, key := range []string{"dark-mode", "max-upload-mb", "welcome-message", "unknown-flag"} {
-		if val, ok := evaluator.Evaluate(key, attrs); ok {
-			fmt.Printf("%-20s = %v\n", key, val)
-		} else {
-			fmt.Printf("%-20s = <not found>\n", key)
-		}
+	for _, key := range []string{"dark-mode", "max-upload-mb", "unknown-flag"} {
+		val := client.GetFlag(key, "<not found>")
+		fmt.Printf("%-20s = %v\n", key, val)
 	}
 }
+
+func strPtr(s string) *string { return &s }

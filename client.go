@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/flagmint/flagmint-go/evaluate"
 	"github.com/flagmint/flagmint-go/internal/syncutil"
 	"github.com/flagmint/flagmint-go/transport"
 )
@@ -21,6 +22,11 @@ type FlagClient struct {
 	transport transport.Transport
 	cache     CacheAdapter
 	logger    *slog.Logger
+
+	// Local evaluation
+	evaluator      *evaluate.Evaluator
+	flagConfigsMu  sync.RWMutex
+	flagConfigs    map[string]*evaluate.FlagConfig
 
 	// Lifecycle
 	initOnce    sync.Once
@@ -66,6 +72,12 @@ func NewClient(apiKey string, opts ...Option) (*FlagClient, error) {
 
 	if cfg.context != nil {
 		c.evalCtx.Store(cfg.context)
+	}
+
+	// Set up local evaluation.
+	if cfg.localEvaluation {
+		c.flagConfigs = make(map[string]*evaluate.FlagConfig)
+		c.evaluator = evaluate.NewEvaluatorWithLogger(cfg.logger)
 	}
 
 	// Set up cache.
@@ -177,11 +189,48 @@ func (c *FlagClient) GetFlags() FeatureFlags {
 }
 
 // GetFlag returns the value for a single flag key, or fallback if not found.
+// When local evaluation is enabled (see [WithLocalEvaluation]) the flag is
+// evaluated against the full FlagConfig stored via [FlagClient.SetFlagConfigs].
 func (c *FlagClient) GetFlag(key string, fallback any) any {
+	if c.cfg.localEvaluation {
+		c.flagConfigsMu.RLock()
+		config, ok := c.flagConfigs[key]
+		c.flagConfigsMu.RUnlock()
+		if !ok {
+			return fallback
+		}
+		var flatCtx map[string]any
+		if ec := c.evalCtx.Load(); ec != nil {
+			flatCtx = ec.Flatten()
+		} else {
+			flatCtx = make(map[string]any)
+		}
+		result, err := c.evaluator.Evaluate(config, flatCtx)
+		if err != nil {
+			c.logger.Warn("flagmint: local evaluation failed", "flag", key, "error", err)
+			return fallback
+		}
+		return result
+	}
+
 	if v, ok := c.GetFlags().Get(key); ok {
 		return v
 	}
 	return fallback
+}
+
+// SetFlagConfigs replaces the local flag configuration used for local
+// evaluation. Pass a map of flag key → *[evaluate.FlagConfig]. Each config's
+// [evaluate.FlagConfig.HydrateVariations] must have been called before passing
+// it here if it was not already hydrated.
+// This method is a no-op when [WithLocalEvaluation] was not set.
+func (c *FlagClient) SetFlagConfigs(configs map[string]*evaluate.FlagConfig) {
+	if !c.cfg.localEvaluation {
+		return
+	}
+	c.flagConfigsMu.Lock()
+	defer c.flagConfigsMu.Unlock()
+	c.flagConfigs = configs
 }
 
 // Bool returns the boolean value of flag key, or fallback if the flag is absent
