@@ -46,38 +46,20 @@ func eval(config *evaluate.FlagConfig, ctx map[string]any) (any, error) {
 // ─── Hash parity ─────────────────────────────────────────────────────────────
 
 func TestStringHash_KnownValues(t *testing.T) {
-	// Expected values computed from the npm string-hash package.
+	// Expected values verified against the npm string-hash package output.
 	cases := map[string]uint32{
-		"":      5381,
-		"hello": 261238937,
-		"test":  2090756197,
-		"a":     177670,
-		"z":     177695,
-		"abc":   193485963,
-		"user123salt": func() uint32 {
-			// Computed: 'user123salt'
-			h := evaluate.StringHash("user123salt")
-			return h
-		}(),
+		"":            5381,
+		"hello":       261238937,
+		"test":        2090756197,
+		"a":           177670,
+		"z":           177695,
+		"abc":         193485963,
+		"user123salt": 240410286,
 	}
-	// Spot-check the fixed values.
-	fixed := map[string]uint32{
-		"":      5381,
-		"hello": 261238937,
-		"test":  2090756197,
-	}
-	for input, want := range fixed {
+	for input, want := range cases {
 		got := evaluate.StringHash(input)
 		if got != want {
 			t.Errorf("StringHash(%q) = %d, want %d", input, got, want)
-		}
-	}
-	// Verify determinism for remaining inputs.
-	for input := range cases {
-		h1 := evaluate.StringHash(input)
-		h2 := evaluate.StringHash(input)
-		if h1 != h2 {
-			t.Errorf("StringHash(%q) not deterministic", input)
 		}
 	}
 }
@@ -753,7 +735,8 @@ func TestVariantRollout_MissingVariation(t *testing.T) {
 // ─── Gradual rollout ──────────────────────────────────────────────────────────
 
 func TestGradualRollout_NotStarted(t *testing.T) {
-	future := time.Now().Add(time.Hour * 24)
+	// Use a fixed future timestamp (year 2099) to ensure the rollout hasn't started.
+	future := time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC)
 	cfg := rolloutConfig(evaluate.FlagTypeBoolean, false, &evaluate.Rollout{
 		Strategy:         evaluate.RolloutGradual,
 		Salt:             "s",
@@ -769,7 +752,9 @@ func TestGradualRollout_NotStarted(t *testing.T) {
 }
 
 func TestGradualRollout_Completed(t *testing.T) {
-	past := time.Now().Add(-time.Hour * 200)
+	// Use a fixed past timestamp that is far enough back (200h) to reach 100% target.
+	// start=2000-01-01, interval=1h, increment=10%/h, target=100%: after 10h it's done.
+	past := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	cfg := rolloutConfig(evaluate.FlagTypeBoolean, false, &evaluate.Rollout{
 		Strategy:         evaluate.RolloutGradual,
 		Salt:             "s",
