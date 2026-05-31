@@ -5,6 +5,56 @@ import (
 	"strconv"
 )
 
+// toComparableString converts v to a string for condition matching, mirroring
+// the JS evaluator's String() coercion semantics. nil → "".
+func toComparableString(v any) string {
+	if v == nil {
+		return ""
+	}
+	switch val := v.(type) {
+	case string:
+		return val
+	case bool:
+		if val {
+			return "true"
+		}
+		return "false"
+	case float64:
+		return strconv.FormatFloat(val, 'f', -1, 64)
+	case int:
+		return strconv.Itoa(val)
+	default:
+		return fmt.Sprintf("%v", val)
+	}
+}
+
+// coerceType coerces v to the given FlagType, returning v unchanged when
+// coercion fails so the caller always gets a usable value.
+func coerceType(v any, ft FlagType) any {
+	switch ft {
+	case FlagTypeBoolean:
+		b, err := CoerceBool(v)
+		if err != nil {
+			return v
+		}
+		return b
+	case FlagTypeString:
+		s, err := CoerceString(v)
+		if err != nil {
+			return v
+		}
+		return s
+	case FlagTypeNumber:
+		n, err := CoerceFloat64(v)
+		if err != nil {
+			return v
+		}
+		return n
+	default: // FlagTypeJSON or unknown — return as-is
+		return v
+	}
+}
+
 // CoerceString coerces v to a string.
 func CoerceString(v any) (string, error) {
 	switch val := v.(type) {

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	flagmint "github.com/flagmint/flagmint-go"
+	"github.com/flagmint/flagmint-go/evaluate"
 )
 
 // TestWithContext sets the evaluation context option.
@@ -217,4 +218,56 @@ func TestMultipleOptions(t *testing.T) {
 		t.Fatalf("NewClient with multiple options: %v", err)
 	}
 	defer c.Close() //nolint:errcheck
+}
+
+// TestWithLocalEvaluation enables the local evaluator and exercises SetFlagConfigs + GetFlag.
+func TestWithLocalEvaluation(t *testing.T) {
+	c, err := flagmint.NewClient("api-key",
+		flagmint.WithContext(flagmint.EvaluationContext{
+			Kind: "user",
+			Key:  "u1",
+			Attributes: map[string]any{"plan": "pro"},
+		}),
+		flagmint.WithLocalEvaluation(),
+		flagmint.WithDeferInit(),
+	)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	defer c.Close() //nolint:errcheck
+
+	trueVarID := "v-true"
+	cfg := &evaluate.FlagConfig{
+		Key:          "my-flag",
+		Type:         evaluate.FlagTypeBoolean,
+		IsActive:     true,
+		DefaultValue: false,
+		Variations:   []evaluate.Variation{{ID: "v-true", Value: true}},
+		TargetingRules: []evaluate.TargetingRule{
+			{
+				ID:        "r1",
+				Kind:      "custom",
+				LogicalOp: evaluate.LogicalAND,
+				Conditions: []evaluate.Condition{
+					{Attribute: "plan", Operator: evaluate.OpEquals, Value: "pro"},
+				},
+				OrderIndex:  1,
+				VariationID: &trueVarID,
+			},
+		},
+	}
+	cfg.HydrateVariations()
+	c.SetFlagConfigs(map[string]*evaluate.FlagConfig{"my-flag": cfg})
+
+	// plan=pro → targeting rule matches → true
+	got := c.GetFlag("my-flag", false)
+	if got != true {
+		t.Errorf("local eval: got %v, want true", got)
+	}
+
+	// Unknown flag → fallback
+	got = c.GetFlag("unknown", "default")
+	if got != "default" {
+		t.Errorf("unknown flag: got %v, want 'default'", got)
+	}
 }

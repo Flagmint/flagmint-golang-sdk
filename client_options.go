@@ -35,16 +35,17 @@ var envEndpoints = map[string][2]string{
 type Option func(*clientConfig)
 
 type clientConfig struct {
-	apiKey        string
-	context       *EvaluationContext
-	transportMode TransportMode
-	enableCache   bool
-	cacheAdapter  CacheAdapter
-	onError       func(error)
-	restEndpoint  string
-	wsEndpoint    string
-	deferInit     bool
-	logger        *slog.Logger
+	apiKey          string
+	context         *EvaluationContext
+	transportMode   TransportMode
+	enableCache     bool
+	cacheAdapter    CacheAdapter
+	onError         func(error)
+	restEndpoint    string
+	wsEndpoint      string
+	deferInit       bool
+	logger          *slog.Logger
+	localEvaluation bool
 }
 
 func defaultConfig() clientConfig {
@@ -139,5 +140,19 @@ func WithDeferInit() Option {
 func WithLogger(l *slog.Logger) Option {
 	return func(c *clientConfig) {
 		c.logger = l
+	}
+}
+
+// WithLocalEvaluation enables local flag evaluation mode.
+// When active, the client evaluates flags locally using FlagConfig objects
+// instead of consuming pre-evaluated values from the server. This eliminates
+// network round-trips for each flag check and keeps user context on-premise.
+//
+// In local evaluation mode, call [FlagClient.SetFlagConfigs] to supply the
+// flag rule configuration. The transport integration (auto-fetching configs
+// from /evaluator/config) is tracked separately.
+func WithLocalEvaluation() Option {
+	return func(c *clientConfig) {
+		c.localEvaluation = true
 	}
 }
