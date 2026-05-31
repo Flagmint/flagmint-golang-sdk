@@ -141,6 +141,39 @@ func (f FeatureFlags) JSON(key string, target any) error {
 	return json.Unmarshal(b, target)
 }
 
+// ToMap returns a shallow copy of all flag values as a plain map.
+// This is useful for external cache adapters that need to serialise flags.
+func (f FeatureFlags) ToMap() map[string]any {
+	if f.values == nil {
+		return map[string]any{}
+	}
+	m := make(map[string]any, len(f.values))
+	for k, v := range f.values {
+		m[k] = v
+	}
+	return m
+}
+
+// MarshalJSON implements [json.Marshaler] so that [FeatureFlags] can be
+// serialised directly by external cache adapters.
+func (f FeatureFlags) MarshalJSON() ([]byte, error) {
+	if f.values == nil {
+		return []byte("{}"), nil
+	}
+	return json.Marshal(f.values)
+}
+
+// UnmarshalJSON implements [json.Unmarshaler] so that [FeatureFlags] can be
+// deserialised by external cache adapters.
+func (f *FeatureFlags) UnmarshalJSON(data []byte) error {
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		return err
+	}
+	f.values = m
+	return nil
+}
+
 // EvaluationContext is the user/org context sent to the server for evaluation.
 // Mirrors EvaluationContextT from the JS SDK.
 type EvaluationContext struct {

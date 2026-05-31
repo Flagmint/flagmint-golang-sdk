@@ -234,39 +234,64 @@ func (c *FlagClient) SetFlagConfigs(configs map[string]*evaluate.FlagConfig) {
 }
 
 // Bool returns the boolean value of flag key, or fallback if the flag is absent
-// or not a bool.
+// or not a bool. When local evaluation is enabled, delegates to [FlagClient.GetFlag].
 func (c *FlagClient) Bool(key string, fallback bool) bool {
+	if c.cfg.localEvaluation {
+		v, ok := c.GetFlag(key, fallback).(bool)
+		if !ok {
+			return fallback
+		}
+		return v
+	}
 	return c.GetFlags().Bool(key, fallback)
 }
 
 // BoolFlag is a typed convenience method. Returns fallback if the flag
-// doesn't exist or isn't a bool.
+// doesn't exist or isn't a bool. When local evaluation is enabled, the flag
+// is evaluated locally against the configured [evaluate.FlagConfig] rules.
 func (c *FlagClient) BoolFlag(key string, fallback bool) bool {
-	return c.GetFlags().Bool(key, fallback)
+	return c.Bool(key, fallback)
 }
 
 // String returns the string value of flag key, or fallback if the flag is absent
-// or not a string.
+// or not a string. When local evaluation is enabled, delegates to [FlagClient.GetFlag].
 func (c *FlagClient) String(key string, fallback string) string {
+	if c.cfg.localEvaluation {
+		v, ok := c.GetFlag(key, fallback).(string)
+		if !ok {
+			return fallback
+		}
+		return v
+	}
 	return c.GetFlags().String(key, fallback)
 }
 
 // StringFlag is a typed convenience method. Returns fallback if the flag
-// doesn't exist or isn't a string.
+// doesn't exist or isn't a string. When local evaluation is enabled, the flag
+// is evaluated locally against the configured [evaluate.FlagConfig] rules.
 func (c *FlagClient) StringFlag(key string, fallback string) string {
-	return c.GetFlags().String(key, fallback)
+	return c.String(key, fallback)
 }
 
 // Float64 returns the numeric value of flag key, or fallback if the flag is absent
-// or not a float64.
+// or not a float64. When local evaluation is enabled, delegates to [FlagClient.GetFlag].
 func (c *FlagClient) Float64(key string, fallback float64) float64 {
+	if c.cfg.localEvaluation {
+		v, ok := c.GetFlag(key, fallback).(float64)
+		if !ok {
+			return fallback
+		}
+		return v
+	}
 	return c.GetFlags().Float64(key, fallback)
 }
 
 // NumberFlag is a typed convenience method. Flags are float64 internally.
-// Returns fallback if the flag doesn't exist or isn't a float64.
+// Returns fallback if the flag doesn't exist or isn't a float64. When local
+// evaluation is enabled, the flag is evaluated locally against the configured
+// [evaluate.FlagConfig] rules.
 func (c *FlagClient) NumberFlag(key string, fallback float64) float64 {
-	return c.GetFlags().Float64(key, fallback)
+	return c.Float64(key, fallback)
 }
 
 // JSON unmarshals a JSON flag configuration into target (must be a pointer).
