@@ -184,8 +184,53 @@ type EvaluationContext struct {
 	Organization *ContextEntity `json:"organization,omitempty"` // for kind="multi"
 }
 
+// MarshalJSON flattens attributes to the top level for API compatibility.
+func (ec EvaluationContext) MarshalJSON() ([]byte, error) {
+	// Build the output map
+	out := make(map[string]any)
+
+	out["kind"] = ec.Kind
+	if ec.Key != "" {
+		out["key"] = ec.Key
+	}
+
+	// Flatten attributes to top level
+	for k, v := range ec.Attributes {
+		out[k] = v
+	}
+
+	// Include nested contexts for multi-kind
+	if ec.User != nil {
+		out["user"] = ec.User
+	}
+	if ec.Organization != nil {
+		out["organization"] = ec.Organization
+	}
+
+	return json.Marshal(out)
+}
+
 // ContextEntity represents a single entity within a multi-kind context.
 type ContextEntity struct {
+	Kind       string         `json:"kind,omitempty"`
 	Key        string         `json:"key"`
 	Attributes map[string]any `json:"attributes,omitempty"`
+}
+
+// MarshalJSON flattens attributes to the top level for API compatibility.
+func (ce ContextEntity) MarshalJSON() ([]byte, error) {
+	// Build the output map
+	out := make(map[string]any)
+
+	if ce.Kind != "" {
+		out["kind"] = ce.Kind
+	}
+	out["key"] = ce.Key
+
+	// Flatten attributes to top level
+	for k, v := range ce.Attributes {
+		out[k] = v
+	}
+
+	return json.Marshal(out)
 }

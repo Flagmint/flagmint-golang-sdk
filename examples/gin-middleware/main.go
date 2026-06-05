@@ -19,13 +19,17 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
 
 	flagmint "github.com/flagmint/flagmint-go"
+	"github.com/flagmint/flagmint-go/examples/util"
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -77,8 +81,15 @@ func flagsFromContext(c *gin.Context) *flagmint.FlagClient {
 }
 
 func main() {
+	_ = godotenv.Load("../../.env")
+
+	token := os.Getenv("FLAGMINT_SDK_TOKEN")
+	if token == "" {
+		token = "ksjdklj"
+	}
+	fmt.Printf("Using SDK token: %s\n", util.MaskToken(token))
 	// Create a single shared client for the lifetime of the server.
-	client, err := flagmint.NewClient(apiKey,
+	client, err := flagmint.NewClient(token,
 		flagmint.WithOnError(func(err error) {
 			log.Printf("flagmint error: %v", err)
 		}),
