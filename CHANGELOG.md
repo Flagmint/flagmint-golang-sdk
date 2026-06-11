@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.0] — 2026-06-11
+
+### Changed
+
+- Updated license from Apache 2.0 to BSD-3-Clause.
+
 ## [v0.1.0] — 2026-05-31
 
 ### Added
@@ -49,4 +55,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `transport.mdx`
   - `caching.mdx`
 
+[v0.2.0]: https://github.com/flagmint/flagmint-go/releases/tag/v0.2.0
 [v0.1.0]: https://github.com/flagmint/flagmint-go/releases/tag/v0.1.0
