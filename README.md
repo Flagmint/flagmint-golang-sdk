@@ -4,8 +4,6 @@ The official Go SDK for [Flagmint](https://docs.flagmint.com/sdks/go) feature fl
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/flagmint/flagmint-go.svg)](https://pkg.go.dev/github.com/flagmint/flagmint-go)
 
-> **Note:** This SDK is pre-stable (`v0.1.0`). Breaking changes may occur before `v1.0.0`.
-
 ---
 
 ## Requirements
